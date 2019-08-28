@@ -5,6 +5,8 @@ import (
 
 	"log"
 
+	"time"
+
 	controller2 "github.com/knative-sample/serving-controller/pkg/controller"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -82,6 +84,8 @@ func run(ops *Options) {
 	logger.Infof("Registering %d informer factories", len(injection.Default.GetInformerFactories()))
 	logger.Infof("Registering %d informers", len(injection.Default.GetInformers()))
 
+	// set ResyncPeriod
+	ctx = controller.WithResyncPeriod(ctx, time.Second*300)
 	ctx, informers := injection.Default.SetupInformers(ctx, cfg)
 
 	// Start all of the informers and wait for them to sync.

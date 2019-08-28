@@ -56,7 +56,7 @@ spec:
       serviceAccountName: revision-controller
       containers:
       - name: controller
-        image: registry.cn-hangzhou.aliyuncs.com/knative-sample/serving-controller:master_c37794b9-20190827204058
+        image: registry.cn-hangzhou.aliyuncs.com/knative-sample/serving-controller:master_48057fa5-20190828172305
         imagePullPolicy: Always
         resources:
           limits:

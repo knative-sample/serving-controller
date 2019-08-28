@@ -5,7 +5,7 @@
 
 ROOTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-NAME="revision-controller"
+NAME="serving-controller"
 NAMESPACE="knative-sample"
 GIT_COMMIT="$(git rev-parse --verify HEAD)"
 GIT_BRANCH=`git branch | grep \* | cut -d ' ' -f2`

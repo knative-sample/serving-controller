@@ -108,7 +108,7 @@ func (current *RevisionTemplateSpec) VerifyNameChange(ctx context.Context, og *R
 	} else if diff != "" {
 		return &apis.FieldError{
 			Message: "Saw the following changes without a name change (-old +new)",
-			Paths:   []string{apis.CurrentField},
+			Paths:   []string{"metadata.name"},
 			Details: diff,
 		}
 	}
@@ -146,7 +146,9 @@ func (rs *RevisionSpec) Validate(ctx context.Context) *apis.FieldError {
 	if err := rs.DeprecatedConcurrencyModel.Validate(ctx).ViaField("concurrencyModel"); err != nil {
 		errs = errs.Also(err)
 	} else {
-		errs = errs.Also(rs.ContainerConcurrency.Validate(ctx).ViaField("containerConcurrency"))
+		if rs.ContainerConcurrency != nil {
+			errs = errs.Also(serving.ValidateContainerConcurrency(rs.ContainerConcurrency).ViaField("containerConcurrency"))
+		}
 	}
 
 	if rs.TimeoutSeconds != nil {

@@ -26,9 +26,9 @@ import (
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
 	"knative.dev/serving/pkg/apis/serving"
-	v1alpha12 "knative.dev/serving/pkg/apis/serving/v1alpha1"
+	v1alpha12 "knative.dev/serving/pkg/apis/serving/v1"
 	versioned "knative.dev/serving/pkg/client/clientset/versioned"
-	listers "knative.dev/serving/pkg/client/listers/serving/v1alpha1"
+	listers "knative.dev/serving/pkg/client/listers/serving/v1"
 	"knative.dev/serving/pkg/reconciler"
 	resourcenames "knative.dev/serving/pkg/reconciler/service/resources/names"
 )

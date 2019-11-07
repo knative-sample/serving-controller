@@ -19,18 +19,41 @@ package serving
 import (
 	"context"
 	"strconv"
+	"strings"
 
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	"knative.dev/serving/pkg/apis/autoscaling"
 	"knative.dev/serving/pkg/apis/config"
+	routeconfig "knative.dev/serving/pkg/reconciler/route/config"
+)
+
+var (
+	allowedAnnotations = map[string]struct{}{
+		UpdaterAnnotation:                {},
+		CreatorAnnotation:                {},
+		RevisionLastPinnedAnnotationKey:  {},
+		GroupNamePrefix + "forceUpgrade": {},
+	}
 )
 
 // ValidateObjectMetadata validates that `metadata` stanza of the
 // resources is correct.
 func ValidateObjectMetadata(meta metav1.Object) *apis.FieldError {
 	return apis.ValidateObjectMetadata(meta).
-		Also(autoscaling.ValidateAnnotations(meta.GetAnnotations()).ViaField("annotations"))
+		Also(autoscaling.ValidateAnnotations(meta.GetAnnotations()).
+			Also(validateKnativeAnnotations(meta.GetAnnotations())).
+			ViaField("annotations"))
+}
+
+func validateKnativeAnnotations(annotations map[string]string) (errs *apis.FieldError) {
+	for key := range annotations {
+		if _, ok := allowedAnnotations[key]; !ok && strings.HasPrefix(key, GroupNamePrefix) {
+			errs = errs.Also(apis.ErrInvalidKeyName(key, apis.CurrentField))
+		}
+	}
+	return
 }
 
 // ValidateQueueSidecarAnnotation validates QueueSideCarResourcePercentageAnnotation
@@ -63,4 +86,49 @@ func ValidateTimeoutSeconds(ctx context.Context, timeoutSeconds int64) *apis.Fie
 		}
 	}
 	return nil
+}
+
+// ValidateContainerConcurrency function validates the ContainerConcurrency field
+// TODO(#5007): Move this to autoscaling.
+func ValidateContainerConcurrency(containerConcurrency *int64) *apis.FieldError {
+	if containerConcurrency != nil {
+		if *containerConcurrency < 0 || *containerConcurrency > config.DefaultMaxRevisionContainerConcurrency {
+			return apis.ErrOutOfBoundsValue(
+				*containerConcurrency, 0, config.DefaultMaxRevisionContainerConcurrency, apis.CurrentField)
+		}
+	}
+	return nil
+}
+
+// ValidateClusterVisibilityLabel function validates the visibility label on a Route
+func ValidateClusterVisibilityLabel(label string) (errs *apis.FieldError) {
+	if label != routeconfig.VisibilityClusterLocal {
+		errs = apis.ErrInvalidValue(label, routeconfig.VisibilityLabelKey)
+	}
+	return
+}
+
+// SetUserInfo sets creator and updater annotations
+func SetUserInfo(ctx context.Context, oldSpec, newSpec, resource interface{}) {
+	if ui := apis.GetUserInfo(ctx); ui != nil {
+		objectMetaAccessor, ok := resource.(metav1.ObjectMetaAccessor)
+		if !ok {
+			return
+		}
+		ans := objectMetaAccessor.GetObjectMeta().GetAnnotations()
+		if ans == nil {
+			ans = map[string]string{}
+			objectMetaAccessor.GetObjectMeta().SetAnnotations(ans)
+		}
+
+		if apis.IsInUpdate(ctx) {
+			if equality.Semantic.DeepEqual(oldSpec, newSpec) {
+				return
+			}
+			ans[UpdaterAnnotation] = ui.Username
+		} else {
+			ans[CreatorAnnotation] = ui.Username
+			ans[UpdaterAnnotation] = ui.Username
+		}
+	}
 }
